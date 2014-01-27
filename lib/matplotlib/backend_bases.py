@@ -3290,16 +3290,17 @@ class NavigationBase(object):
 
     @property
     def active_toggle(self):
-        """Get the tooggled Tool"""
+        """Toggled Tool
+
+        **string** :  Currently toggled tool, or None
+        """
         return self._toggled
 
-    def get_instances(self):
-        """Get the active tools instgances
+    @property
+    def instances(self):
+        """Active tools instances
 
-        Returns
-        ----------
-         A dictionary with the active instances that are registered with
-         Navigation
+        **dictionary** : Contains the active instances that are registered
         """
         return self._instances
 
@@ -3313,7 +3314,7 @@ class NavigationBase(object):
 
         Returns
         ----------
-        Keymap : list of keys associated with the Tool
+        list : list of keys associated with the Tool
         """
         keys = [k for k, i in self._keys.items() if i == name]
         return keys
@@ -3345,6 +3346,11 @@ class NavigationBase(object):
     def unregister(self, name):
         """Unregister the tool from the active instances
 
+        Parameters
+        ----------
+        name : string
+            Name of the tool to unregister
+
         Notes
         -----
         This method is used by `PersistentTools` to remove the reference kept
@@ -3354,8 +3360,7 @@ class NavigationBase(object):
         destroy if it is a graphical Tool.
 
         If called, next time the `Tool` is used it will be reinstantiated
-        instead
-        of using the existing instance.
+        instead of using the existing instance.
         """
         if self._toggled == name:
             self._handle_toggle(name, from_toolbar=False)
@@ -3432,6 +3437,29 @@ class NavigationBase(object):
 
         return callback_class
 
+    def click_tool(self, name):
+        """Simulate a click on a tool
+
+        This is a convenient method to programatically click on
+        Tools
+        """
+        self._tool_activate(name, None, False)
+
+    def _tool_activate(self, name, event, from_toolbar):
+        if name not in self._tools:
+            raise AttributeError('%s not in Tools' % name)
+
+        tool = self._tools[name]
+        if tool.toggle:
+            self._handle_toggle(name, event=event, from_toolbar=from_toolbar)
+        elif tool.persistent:
+            instance = self._get_instance(name)
+            instance.activate(event)
+        else:
+            #Non persistent tools, are
+            #instantiated and forgotten (reminds me an exgirlfriend?)
+            tool(self.canvas.figure, event)
+
     def _key_press(self, event):
         if event.key is None:
             return
@@ -3444,19 +3472,7 @@ class NavigationBase(object):
                 return
 
         name = self._keys.get(event.key, None)
-        if name is None:
-            return
-
-        tool = self._tools[name]
-        if tool.toggle:
-            self._handle_toggle(name, event=event)
-        elif tool.persistent:
-            instance = self._get_instance(name)
-            instance.activate(event)
-        else:
-            #Non persistent tools, are
-            #instantiated and forgotten (reminds me an exgirlfriend?)
-            tool(self.canvas.figure, event)
+        self._tool_activate(name, event, False)
 
     def _get_instance(self, name):
         if name not in self._instances:
@@ -3478,14 +3494,7 @@ class NavigationBase(object):
             Name of the tool that was activated (click) by the user using the
             toolbar
         """
-        tool = self._tools[name]
-        if tool.toggle:
-            self._handle_toggle(name, from_toolbar=True)
-        elif tool.persistent:
-            instance = self._get_instance(name)
-            instance.activate(None)
-        else:
-            tool(self.canvas.figure, None)
+        self._tool_activate(name, None, True)
 
     def _handle_toggle(self, name, event=None, from_toolbar=False):
         #toggle toolbar without callback
