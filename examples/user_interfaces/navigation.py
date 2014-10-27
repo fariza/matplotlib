@@ -13,17 +13,18 @@ class ListTools(ToolBase):
     description = 'List Tools'
  
     def trigger(self, *args, **kwargs):
-        tools = self.navigation.get_tools()
-  
         print ('_' * 80)
         print ("{0:12} {1:45} {2}".format('Name (id)',
                                           'Tool description',
                                           'Keymap'))
-        print ('_' * 80)
+        
+        tools = self.navigation.tools
         for name in sorted(tools.keys()):
-            keys = ', '.join(sorted(tools[name]['keymap']))
+            if not tools[name].description:
+                continue
+            keys = ', '.join(sorted(self.navigation.get_tool_keymap(name)))
             print ("{0:12} {1:45} {2}".format(name,
-                                              tools[name]['description'],
+                                              tools[name].description,
                                               keys))
         print ('_' * 80)  
  

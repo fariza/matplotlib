@@ -3216,9 +3216,9 @@ class ToolEvent(object):
 
 class ToolTriggerEvent(ToolEvent):
     """Event to inform  that a tool has been triggered"""
-    def __init__(self, name, toolname, sender, canvasevent=None, data=None):
+    def __init__(self, name, tool, sender, canvasevent=None, data=None):
         ToolEvent.__init__(self, name, sender)
-        self.toolname = toolname
+        self.tool = tool
         self.canvasevent = canvasevent
         self.data = data
 
@@ -3448,8 +3448,6 @@ class NavigationBase(object):
         for a in self.canvas.figure.get_axes():
             a.set_navigate_mode(self._toggled)
 
-        self._set_cursor(canvasevent)
-
     def _get_cls_to_instantiate(self, callback_class):
         # Find the class that corresponds to the tool
         if isinstance(callback_class, six.string_types):
@@ -3490,7 +3488,7 @@ class NavigationBase(object):
         self._trigger_tool(name, sender, canvasevent, data)
 
         s = 'tool-trigger-%s' % name
-        event = ToolTriggerEvent(s, name, sender, canvasevent, data)
+        event = ToolTriggerEvent(s, self._tools[name], sender, canvasevent, data)
         self.callbacks.process(s, event)
 
     def _trigger_tool(self, name, sender=None, canvasevent=None, data=None):
@@ -3516,17 +3514,11 @@ class NavigationBase(object):
             return
         self.tool_trigger_event(name, canvasevent=event)
 
-    def get_tools(self):
+    @property
+    def tools(self):
         """Return the tools controlled by `Navigation`"""
 
-        d = {}
-        for name in sorted(self._tools.keys()):
-            tool = self._tools[name]
-            keys = [k for k, i in six.iteritems(self._keys) if i == name]
-            d[name] = {'obj': tool,
-                       'description': tool.description,
-                       'keymap': keys}
-        return d
+        return self._tools
 
     def get_tool(self, name):
         """Return the tool object
@@ -3537,16 +3529,6 @@ class NavigationBase(object):
             Name of the tool
         """
         return self._tools[name]
-
-    def _set_cursor(self, canvasevent):
-        """Sets the current cursor in ToolSetCursor"""
-
-        if self._toggled:
-            cursor = self._tools[self._toggled].cursor
-        else:
-            cursor = None
-
-        self.tool_trigger_event('cursor', self, canvasevent, data=cursor)
 
 
 class ToolbarBase(object):
@@ -3578,7 +3560,7 @@ class ToolbarBase(object):
         if event.sender is self:
             return
 
-        self.toggle_toolitem(event.toolname)
+        self.toggle_toolitem(event.tool.name)
 
     def _add_tool_cbk(self, event):
         """Captures 'tool_added_event' and add the tool to the toolbar"""

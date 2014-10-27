@@ -143,7 +143,11 @@ class ToolToggleBase(ToolBase):
 
 
 class SetCursorBase(ToolBase):
-    """Change to the current cursor while inaxes"""
+    """Change to the current cursor while inaxes
+
+    This tool, keeps track of all "toggleable" tools, and calls
+    set_cursos when one of these tools is triggered
+    """
     def __init__(self, *args, **kwargs):
         ToolBase.__init__(self, *args, **kwargs)
         self._idDrag = self.figure.canvas.mpl_connect(
@@ -151,6 +155,32 @@ class SetCursorBase(ToolBase):
         self._cursor = None
         self._default_cursor = cursors.POINTER
         self._last_cursor = self._default_cursor
+        self.navigation.mpl_connect('tool_added_event', self._add_tool_cbk)
+
+        # process current tools
+        for tool in self.navigation.tools.values():
+            self._add_tool(tool)
+
+    def _tool_trigger_cbk(self, event):
+        if event.tool.toggled:
+            self._cursor = event.tool.cursor
+        else:
+            self._cursor = None
+
+        self._set_cursor_cbk(event.canvasevent)
+
+    # If the tool is toggleable, set the cursor when the tool is triggered
+    def _add_tool(self, tool):
+        if getattr(tool, 'toggled', None) is not None:
+            self.navigation.mpl_connect('tool-trigger-%s' % tool.name,
+                                        self._tool_trigger_cbk)
+
+    # If tool is added, process it
+    def _add_tool_cbk(self, event):
+        if event.tool is self:
+            return
+
+        self._add_tool(event.tool)
 
     def _set_cursor_cbk(self, event):
         if not event:
@@ -166,10 +196,6 @@ class SetCursorBase(ToolBase):
                 if cursor and self._last_cursor != cursor:
                     self.set_cursor(cursor)
                     self._last_cursor = cursor
-
-    def trigger(self, sender, event, data):
-        self._cursor = data
-        self._set_cursor_cbk(event)
 
     def set_cursor(self, cursor):
         """Set the cursor
