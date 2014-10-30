@@ -17,7 +17,7 @@ class ListTools(ToolBase):
         print ("{0:12} {1:45} {2}".format('Name (id)',
                                           'Tool description',
                                           'Keymap'))
-        
+        print ('-' * 80)
         tools = self.navigation.tools
         for name in sorted(tools.keys()):
             if not tools[name].description:
