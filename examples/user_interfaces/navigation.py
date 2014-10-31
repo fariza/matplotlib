@@ -4,14 +4,14 @@ matplotlib.use('GTK3Cairo')
 matplotlib.rcParams['toolbar'] = 'navigation'
 import matplotlib.pyplot as plt
 from matplotlib.backend_tools import ToolBase
-from pydispatch import dispatcher
+
 
 # Create a simple tool to list all the tools
 class ListTools(ToolBase):
     # keyboard shortcut
     keymap = 'm'
     description = 'List Tools'
- 
+
     def trigger(self, *args, **kwargs):
         print ('_' * 80)
         print ("{0:12} {1:45} {2}".format('Name (id)',
@@ -26,9 +26,9 @@ class ListTools(ToolBase):
             print ("{0:12} {1:45} {2}".format(name,
                                               tools[name].description,
                                               keys))
-        print ('_' * 80)  
- 
- 
+        print ('_' * 80)
+
+
 # A simple example of copy canvas
 # ref: at https://github.com/matplotlib/matplotlib/issues/1987
 class CopyToolGTK3(ToolBase):
@@ -36,7 +36,7 @@ class CopyToolGTK3(ToolBase):
     description = 'Copy canvas'
     # It is not added to the toolbar as a button
     intoolbar = False
- 
+
     def trigger(self, *args, **kwargs):
         from gi.repository import Gtk, Gdk
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
@@ -53,7 +53,7 @@ plt.plot([1, 2, 3])
 fig.canvas.manager.navigation.add_tool('List', ListTools)
 if matplotlib.rcParams['backend'] == 'GTK3Cairo':
     fig.canvas.manager.navigation.add_tool('copy', CopyToolGTK3)
- 
+
 # Uncomment to remove the forward button
 # fig.canvas.manager.navigation.remove_tool('forward')
 
