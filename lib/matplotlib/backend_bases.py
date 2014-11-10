@@ -3504,7 +3504,7 @@ class NavigationBase(object):
 
         self._trigger_tool(name, sender, canvasevent, data)
 
-        s = 'tool-trigger-%s' % name
+        s = 'tool_trigger_%s' % name
         event = ToolTriggerEvent(s, sender, self._tools[name], canvasevent,
                                  data)
         self._callbacks.process(s, event)
@@ -3593,7 +3593,7 @@ class ToolbarBase(object):
                           event.tool.description,
                           toggle)
         if toggle:
-            self.navigation.mpl_connect('tool-trigger-%s' % event.tool.name,
+            self.navigation.mpl_connect('tool_trigger_%s' % event.tool.name,
                                         self._tool_triggered_cbk)
 
     def _remove_tool_cbk(self, event):
