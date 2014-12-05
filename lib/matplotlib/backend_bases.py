@@ -3209,26 +3209,18 @@ class NavigationToolbar2(object):
 
 class ToolEvent(object):
     """Event for tool manipulation (add/remove)"""
-    def __init__(self, name, sender, tool):
+    def __init__(self, name, sender, tool, data=None):
         self.name = name
         self.sender = sender
         self.tool = tool
+        self.data = data
 
 
 class ToolTriggerEvent(ToolEvent):
     """Event to inform  that a tool has been triggered"""
     def __init__(self, name, sender, tool, canvasevent=None, data=None):
-        ToolEvent.__init__(self, name, sender, tool)
+        ToolEvent.__init__(self, name, sender, tool, data)
         self.canvasevent = canvasevent
-        self.data = data
-
-
-class ToolAddedEvent(ToolEvent):
-    """Event triggered when a tool is added"""
-    def __init__(self, name, sender, tool, group, position):
-        ToolEvent.__init__(self, name, sender, tool)
-        self.group = group
-        self.position = position
 
 
 class NavigationMessageEvent(object):
@@ -3452,10 +3444,10 @@ class NavigationBase(object):
 
     def _tool_added_event(self, tool, group, position):
         s = 'tool_added_event'
-        event = ToolAddedEvent(s, self,
-                               tool,
-                               group,
-                               position)
+        event = ToolEvent(s,
+                          self,
+                          tool,
+                          data={'group': group, 'position': position})
         self._callbacks.process(s, event)
 
     def _handle_toggle(self, tool, sender, canvasevent, data):
@@ -3616,8 +3608,8 @@ class ToolbarBase(object):
         image = self._get_image_filename(event.tool.image)
         toggle = getattr(event.tool, 'toggled', None) is not None
         self.add_toolitem(event.tool.name,
-                          event.group,
-                          event.position,
+                          event.data['group'],
+                          event.data['position'],
                           image,
                           event.tool.description,
                           toggle)
