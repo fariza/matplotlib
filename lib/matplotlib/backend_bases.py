@@ -3224,9 +3224,9 @@ class ToolTriggerEvent(ToolEvent):
 
 
 class NavigationMessageEvent(object):
-    """Event carring messages from navigation
+    """Event carrying messages from navigation
 
-    Messages are generaly displayed to the user by the toolbar
+    Messages usually get displayed to the user by the toolbar
     """
     def __init__(self, name, sender, message):
         self.name = name
@@ -3313,7 +3313,7 @@ class NavigationBase(object):
         return self._toggled
 
     def get_tool_keymap(self, name):
-        """Get the keymap associated with a tool
+        """Get the keymap associated with the specified tool
 
         Parameters
         ----------
@@ -3334,13 +3334,13 @@ class NavigationBase(object):
             del self._keys[k]
 
     def set_tool_keymap(self, name, *keys):
-        """Set the keymap associated with a tool
+        """Set the keymap to associate with the specified tool
 
         Parameters
         ----------
         name : string
             Name of the Tool
-        keys : keys to associated with the Tool
+        keys : keys to associate with the Tool
         """
 
         if name not in self._tools:
@@ -3414,7 +3414,7 @@ class NavigationBase(object):
         group: String
             Group to position the tool in
         position : int or None (default)
-            Position within its group in the toolbar, if None, is positioned at the end
+            Position within its group in the toolbar, if None, it goes at the end
         """
 
         tool_cls = self._get_cls_to_instantiate(tool)
@@ -3431,7 +3431,7 @@ class NavigationBase(object):
         if tool_cls.keymap is not None:
             self.set_tool_keymap(name, tool_cls.keymap)
 
-        # For toggle tools init the radio_grop in self._toggled
+        # For toggle tools init the radio_group in self._toggled
         if getattr(tool_cls, 'toggled', False) is not False:
             # None group is not mutually exclusive, a set is used to keep track
             # of all toggled tools in this group
@@ -3451,8 +3451,8 @@ class NavigationBase(object):
         self._callbacks.process(s, event)
 
     def _handle_toggle(self, tool, sender, canvasevent, data):
-        # Toggle tools, need to be untoggled before other Toggle tool is used
-        # This is called from tool_trigger_event
+        # Toggle tools, need to untoggle prior to using other Toggle tool
+        # Called from tool_trigger_event
 
         radio_group = tool.radio_group
         # radio_group None is not mutually exclusive
@@ -3464,8 +3464,7 @@ class NavigationBase(object):
                 self._toggled[None].add(tool.name)
             return
 
-        # If it is the same tool that is toggled in the radio_group
-        # untoggle it
+        # If the tool already has a toggled state, untoggle it
         if self._toggled[radio_group] == tool.name:
             toggled = None
         # If no tool was toggled in the radio_group
@@ -3510,7 +3509,7 @@ class NavigationBase(object):
         name : string
             Name of the tool
         sender: object
-            Object that wish to trigger the tool
+            Object that wishes to trigger the tool
         canvasevent : Event
             Original Canvas event or None
         data : Object
@@ -3541,7 +3540,7 @@ class NavigationBase(object):
             self._handle_toggle(tool, sender, canvasevent, data)
 
         # Important!!!
-        # This is where the Tool object is triggered
+        # This is where the Tool object gets triggered
         tool.trigger(sender, canvasevent, data)
 
     def _key_press(self, event):
@@ -3590,13 +3589,13 @@ class ToolbarBase(object):
                                     self._remove_tool_cbk)
 
     def _message_cbk(self, event):
-        """Captures the 'tool_message_event' to set message on the toolbar"""
+        """Captures the 'tool_message_event' to set the message on the toolbar"""
         self.set_message(event.message)
 
     def _tool_triggered_cbk(self, event):
         """Captures the 'tool-trigger-toolname
 
-        This is only used for toggled tools
+        This only gets used for toggled tools
         """
         if event.sender is self:
             return
@@ -3604,7 +3603,7 @@ class ToolbarBase(object):
         self.toggle_toolitem(event.tool.name)
 
     def _add_tool_cbk(self, event):
-        """Captures 'tool_added_event' and add the tool to the toolbar"""
+        """Captures 'tool_added_event' and adds the tool to the toolbar"""
         image = self._get_image_filename(event.tool.image)
         toggle = getattr(event.tool, 'toggled', None) is not None
         self.add_toolitem(event.tool.name,
@@ -3618,11 +3617,11 @@ class ToolbarBase(object):
                                         self._tool_triggered_cbk)
 
     def _remove_tool_cbk(self, event):
-        """Captures the 'tool_removed_event' signal and remove the tool"""
+        """Captures the 'tool_removed_event' signal and removes the tool"""
         self.remove_toolitem(event.tool.name)
 
     def _get_image_filename(self, image):
-        """"Base on the image name find the corresponding image"""
+        """Find the image based on its name"""
         # TODO: better search for images, they are not always in the
         # datapath
         basedir = os.path.join(rcParams['datapath'], 'images')
@@ -3638,7 +3637,7 @@ class ToolbarBase(object):
         Parameters
         ----------
         name : String
-            Name(id) of the tool that was triggered in the toolbar
+            Name(id) of the tool triggered from within the toolbar
 
         """
         self.navigation.tool_trigger_event(name, sender=self)
@@ -3646,7 +3645,7 @@ class ToolbarBase(object):
     def add_toolitem(self, name, group, position, image, description, toggle):
         """Add a toolitem to the toolbar
 
-        This method has to be implemented per backend
+        This method must get implemented per backend
 
         The callback associated with the button click event,
         must be **EXACTLY** `self.trigger_tool(name)`
@@ -3654,12 +3653,12 @@ class ToolbarBase(object):
         Parameters
         ----------
         name : string
-            Name of the tool to add, this is used as ID and as default label
-            of the buttons
+            Name of the tool to add, this gets used as the tool's ID and as the
+            default label of the buttons
         group : String
-            Name of the group that the tool belongs to
+            Name of the group that this tool belongs to
         position : Int
-            Position of the tool whthin its group if -1 at the End
+            Position of the tool within its group, if -1 it goes at the End
         image_file : String
             Filename of the image for the button or `None`
         description : String
@@ -3697,9 +3696,9 @@ class ToolbarBase(object):
     def remove_toolitem(self, name):
         """Remove a toolitem from the `Toolbar`
 
-        This method has to be implemented per backend
+        This method must get implemented per backend
 
-        Called when `tool_removed_event` is emited by `NavigationBase`
+        Called when `NavigationBase` emits a `tool_removed_event`
 
         Parameters
         ----------
