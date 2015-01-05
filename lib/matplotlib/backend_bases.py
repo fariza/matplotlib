@@ -3274,9 +3274,12 @@ class NavigationBase(object):
             - 'tool_message_event'
             - 'tool_removed_event'
             - 'tool_added_event'
+
             For every tool added a new event is created
-            - 'tool_trigger_TOOLNAME
-            Where TOOLNAME is the id of the tool.
+
+            - 'tool_trigger_TOOLNAME`
+              Where TOOLNAME is the id of the tool.
+
         func : function
             Function to be called with signature
             def func(event)
