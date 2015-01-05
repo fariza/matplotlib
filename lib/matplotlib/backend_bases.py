@@ -3329,8 +3329,7 @@ class NavigationBase(object):
         return keys
 
     def _remove_keys(self, name):
-        keys = [k for k, v in six.iteritems(self._keys) if v == name]
-        for k in keys:
+        for k in self.get_tool_keymap(name):
             del self._keys[k]
 
     def set_tool_keymap(self, name, *keys):
