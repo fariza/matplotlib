@@ -2430,6 +2430,17 @@ class FigureCanvasBase(object):
         """
         self._looping = False
 
+    def destroy(self):
+        pass
+
+    def get_title(self):
+        if hasattr(self, "manager"):
+            return self.manager.get_canvas_title(self)
+
+    def set_title(self, title):
+        if hasattr(self, "manager"):
+            return self.manager.set_canvas_title(self, title)
+
 
 def key_press_handler(event, canvas, toolbar=None):
     """
@@ -2622,6 +2633,25 @@ class FigureManagerBase(object):
         Set the title text of the window containing the figure.  Note that
         this has no effect for non-GUI backends (e.g., a PS backend).
         """
+        pass
+
+
+class MultiFigureManagerBase(FigureManagerBase):
+    def __init__(self, canvas):
+        self.active_canvas = canvas
+        self._canvas = {}
+
+    def add_canvas(self, canvas, num):
+        self._canvas[canvas] = {'num': num}
+        canvas.manager = self
+
+    def remove_canvas(self, canvas):
+        del self._canvas[canvas]
+
+    def get_canvas_title(self, canvas):
+        pass
+
+    def set_canvas_title(self, canvas, title):
         pass
 
 
@@ -3246,10 +3276,8 @@ class NavigationBase(object):
     """
 
     def __init__(self, canvas):
-        self.canvas = canvas
-
-        self._key_press_handler_id = self.canvas.mpl_connect(
-            'key_press_event', self._key_press)
+        self.canvas = None
+        self._key_press_handler_id = None
 
         self._tools = {}
         self._keys = {}
@@ -3259,6 +3287,17 @@ class NavigationBase(object):
         # to process keypress event
         self.keypresslock = widgets.LockDraw()
         self.messagelock = widgets.LockDraw()
+
+        self.set_canvas(canvas)
+
+    def set_canvas(self, canvas):
+        if self._key_press_handler_id:
+            self.canvas.mpl_disconnect(self._key_press_handler_id)
+        self.canvas = canvas
+        self._key_press_handler_id = self.canvas.mpl_connect(
+            'key_press_event', self._key_press)
+        for name in self._tools:
+            self.get_tool(name).set_figure(canvas.figure)
 
     def nav_connect(self, s, func):
         """Connect event with string *s* to *func*.

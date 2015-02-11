@@ -128,9 +128,20 @@ class ToolToggleBase(ToolBase):
     cursor = None
     """Cursor to use when the tool is active"""
 
+    figure_retoggle = True
+    """Re-toggle tool when new figure is setted"""
+
     def __init__(self, *args, **kwargs):
-        ToolBase.__init__(self, *args, **kwargs)
         self._toggled = False
+        ToolBase.__init__(self, *args, **kwargs)
+
+    def set_figure(self, figure):
+        if self.figure_retoggle and self.toggled:
+            self.disable(None)
+            ToolBase.set_figure(self, figure)
+            self.enable(None)
+        else:
+            ToolBase.set_figure(self, figure)
 
     def trigger(self, sender, event, data=None):
         """Calls `enable` or `disable` based on `toggled` value"""
@@ -419,16 +430,16 @@ class ToolViewsPositions(ToolBase):
         self.positions = WeakKeyDictionary()
         ToolBase.__init__(self, *args, **kwargs)
 
-    def add_figure(self):
+    def add_figure(self, figure):
         """Add the current figure to the stack of views and positions"""
-        if self.figure not in self.views:
-            self.views[self.figure] = cbook.Stack()
-            self.positions[self.figure] = cbook.Stack()
+        if figure not in self.views:
+            self.views[figure] = cbook.Stack()
+            self.positions[figure] = cbook.Stack()
             # Define Home
             self.push_current()
             # Adding the clear method as axobserver, removes this burden from
             # the backend
-            self.figure.add_axobserver(self.clear)
+            figure.add_axobserver(self.clear)
 
     def clear(self, figure):
         """Reset the axes stack"""
@@ -516,7 +527,7 @@ class ViewsPositionsBase(ToolBase):
     _on_trigger = None
 
     def trigger(self, sender, event, data=None):
-        self.navigation.get_tool('viewpos').add_figure()
+        self.navigation.get_tool('viewpos').add_figure(self.figure)
         getattr(self.navigation.get_tool('viewpos'), self._on_trigger)()
         self.navigation.get_tool('viewpos').update_view()
 
@@ -593,7 +604,7 @@ class ZoomPanBase(ToolToggleBase):
         self.figure.canvas.mpl_disconnect(self._idScroll)
 
     def trigger(self, sender, event, data=None):
-        self.navigation.get_tool('viewpos').add_figure()
+        self.navigation.get_tool('viewpos').add_figure(self.figure)
         ToolToggleBase.trigger(self, sender, event, data)
 
     def scroll_zoom(self, event):

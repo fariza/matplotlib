@@ -503,6 +503,7 @@ defaultParams = {
     'webagg.open_in_browser': [True, validate_bool],
     'webagg.port_retries': [50, validate_int],
     'nbagg.transparent':       [True, validate_bool],
+    'backend.multifigure': [False, validate_bool],
     'toolbar':           ['toolbar2', validate_toolbar],
     'datapath':          [None, validate_path_exists],  # handled by
                                                         # _get_data_path_cached
