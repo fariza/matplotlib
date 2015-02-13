@@ -7,6 +7,9 @@ from . import backend_gtk3
 from . import backend_cairo
 from .backend_cairo import cairo, HAS_CAIRO_CFFI
 from matplotlib.figure import Figure
+import weakref
+from matplotlib import rcParams
+
 
 class RendererGTK3Cairo(backend_cairo.RendererCairo):
     def set_context(self, ctx):
@@ -52,21 +55,37 @@ class FigureManagerGTK3Cairo(backend_gtk3.FigureManagerGTK3):
     pass
 
 
+class _a(object):
+    pass
+
+last_manager = weakref.ref(_a())
+
+
 def new_figure_manager(num, *args, **kwargs):
     """
     Create a new figure manager instance
     """
+    manager = None
+    if rcParams['backend.multifigure']:
+        manager = kwargs.pop('manager', None)
+        if manager is None:
+            manager = last_manager()
     FigureClass = kwargs.pop('FigureClass', Figure)
     thisFig = FigureClass(*args, **kwargs)
-    return new_figure_manager_given_figure(num, thisFig)
+    return new_figure_manager_given_figure(num, thisFig, manager)
 
 
-def new_figure_manager_given_figure(num, figure):
+def new_figure_manager_given_figure(num, figure, manager):
     """
     Create a new figure manager instance for the given figure.
     """
+    global last_manager
     canvas = FigureCanvasGTK3Cairo(figure)
-    manager = FigureManagerGTK3Cairo(canvas, num)
+    if manager:
+        manager.add_canvas(canvas, num)
+    else:
+        manager = FigureManagerGTK3Cairo(canvas, num)
+    last_manager = weakref.ref(manager)
     return manager
 
 

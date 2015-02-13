@@ -128,20 +128,20 @@ class ToolToggleBase(ToolBase):
     cursor = None
     """Cursor to use when the tool is active"""
 
-    figure_retoggle = True
-    """Re-toggle tool when new figure is setted"""
+    figure_retrigger = True
+    """Re-trigger tool when new figure is setted"""
 
     def __init__(self, *args, **kwargs):
         self._toggled = False
         ToolBase.__init__(self, *args, **kwargs)
 
-    def set_figure(self, figure):
-        if self.figure_retoggle and self.toggled:
-            self.disable(None)
-            ToolBase.set_figure(self, figure)
-            self.enable(None)
-        else:
-            ToolBase.set_figure(self, figure)
+#     def set_figure(self, figure):
+#         if self.figure_retoggle and self.toggled:
+#             self.disable(None)
+#             ToolBase.set_figure(self, figure)
+#             self.enable(None)
+#         else:
+#             ToolBase.set_figure(self, figure)
 
     def trigger(self, sender, event, data=None):
         """Calls `enable` or `disable` based on `toggled` value"""
@@ -188,9 +188,8 @@ class SetCursorBase(ToolBase):
     set_cursor when a tool gets triggered
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
-        self._idDrag = self.figure.canvas.mpl_connect(
-            'motion_notify_event', self._set_cursor_cbk)
         self._cursor = None
         self._default_cursor = cursors.POINTER
         self._last_cursor = self._default_cursor
@@ -200,12 +199,20 @@ class SetCursorBase(ToolBase):
         for tool in self.navigation.tools.values():
             self._add_tool(tool)
 
+    def set_figure(self, figure):
+        if self._idDrag:
+            self.figure.canvas.mpl_disconnect(self._idDrag)
+
+        ToolBase.set_figure(self, figure)
+
+        self._idDrag = self.figure.canvas.mpl_connect(
+            'motion_notify_event', self._set_cursor_cbk)
+
     def _tool_trigger_cbk(self, event):
         if event.tool.toggled:
             self._cursor = event.tool.cursor
         else:
             self._cursor = None
-
         self._set_cursor_cbk(event.canvasevent)
 
     # If the tool is toggleable, set the cursor when the tool is triggered
@@ -250,7 +257,15 @@ class ToolCursorPosition(ToolBase):
     This tool runs in the background reporting the position of the cursor
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
+
+    def set_figure(self, figure):
+        if self._idDrag:
+            self.figure.canvas.mpl_disconnect(self._idDrag)
+
+        ToolBase.set_figure(self, figure)
+
         self._idDrag = self.figure.canvas.mpl_connect(
             'motion_notify_event', self.send_message)
 
@@ -342,53 +357,53 @@ class ToolEnableNavigation(ToolBase):
                     a.set_navigate(i == n)
 
 
-class ToolGrid(ToolToggleBase):
+class ToolFullScreen(ToolToggleBase):
+    """Tool to toggle full screen"""
+    description = 'Toogle Fullscreen mode'
+    keymap = rcParams['keymap.fullscreen']
+    figure_retrigger = False
+
+    def enable(self, event):
+        self.figure.canvas.manager.full_screen_toggle()
+
+    def disable(self, event):
+        self.figure.canvas.manager.full_screen_toggle()
+
+
+# The next tools GRID and SCALE
+# even if they are toggle by nature, it is easier to make them as simple tools
+# if not, there is a need to keep track of state of each different figure in
+# the case of MultiFigureManager
+
+
+class ToolGrid(ToolBase):
     """Tool to toggle the grid of the figure"""
 
     description = 'Toogle Grid'
     keymap = rcParams['keymap.grid']
 
     def trigger(self, sender, event, data=None):
+        if not event:
+            return
         if event.inaxes is None:
             return
-        ToolToggleBase.trigger(self, sender, event, data)
 
-    def enable(self, event):
-        event.inaxes.grid(True)
-        self.figure.canvas.draw_idle()
-
-    def disable(self, event):
-        event.inaxes.grid(False)
+        event.inaxes.grid()
         self.figure.canvas.draw_idle()
 
 
-class ToolFullScreen(ToolToggleBase):
-    """Tool to toggle full screen"""
-
-    description = 'Toogle Fullscreen mode'
-    keymap = rcParams['keymap.fullscreen']
-
-    def enable(self, event):
-        self.figure.canvas.manager.full_screen_toggle()
-
-    def disable(self, event):
-        self.figure.canvas.manager.full_screen_toggle()
-
-
-class AxisScaleBase(ToolToggleBase):
+class AxisScaleBase(ToolBase):
     """Base Tool to toggle between linear and logarithmic"""
 
     def trigger(self, sender, event, data=None):
         if event.inaxes is None:
             return
-        ToolToggleBase.trigger(self, sender, event, data)
 
-    def enable(self, event):
-        self.set_scale(event.inaxes, 'log')
-        self.figure.canvas.draw_idle()
-
-    def disable(self, event):
-        self.set_scale(event.inaxes, 'linear')
+        scale = self.get_scale(event.inaxes)
+        if scale == 'log':
+            self.set_scale(event.inaxes, 'linear')
+        else:
+            self.set_scale(event.inaxes, 'log')
         self.figure.canvas.draw_idle()
 
 
@@ -401,6 +416,9 @@ class ToolYScale(AxisScaleBase):
     def set_scale(self, ax, scale):
         ax.set_yscale(scale)
 
+    def get_scale(self, ax):
+        return ax.get_yscale()
+
 
 class ToolXScale(AxisScaleBase):
     """Tool to toggle between linear and logarithmic scales on the X axis"""
@@ -410,6 +428,9 @@ class ToolXScale(AxisScaleBase):
 
     def set_scale(self, ax, scale):
         ax.set_xscale(scale)
+
+    def get_scale(self, ax):
+        return ax.get_xscale()
 
 
 class ToolViewsPositions(ToolBase):
@@ -432,6 +453,7 @@ class ToolViewsPositions(ToolBase):
 
     def add_figure(self, figure):
         """Add the current figure to the stack of views and positions"""
+
         if figure not in self.views:
             self.views[figure] = cbook.Stack()
             self.positions[figure] = cbook.Stack()

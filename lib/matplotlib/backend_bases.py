@@ -2638,7 +2638,7 @@ class FigureManagerBase(object):
 
 class MultiFigureManagerBase(FigureManagerBase):
     def __init__(self, canvas):
-        self.active_canvas = canvas
+        self._active_canvas = canvas
         self._canvas = {}
 
     def add_canvas(self, canvas, num):
@@ -2653,6 +2653,12 @@ class MultiFigureManagerBase(FigureManagerBase):
 
     def set_canvas_title(self, canvas, title):
         pass
+
+    def set_active_canvas(self, canvas):
+        self._active_canvas = canvas
+
+    def get_active_canvas(self):
+        return self._active_canvas
 
 
 cursors = tools.cursors
@@ -3291,13 +3297,25 @@ class NavigationBase(object):
         self.set_canvas(canvas)
 
     def set_canvas(self, canvas):
+        retrigg = [tool for tool in self._tools.values() if
+                   getattr(tool, 'figure_retrigger', False)
+                   and tool.toggled]
+
+        for tool in retrigg:
+            self.tool_trigger_event(tool.name, 'navigation')
+
         if self._key_press_handler_id:
             self.canvas.mpl_disconnect(self._key_press_handler_id)
         self.canvas = canvas
+
         self._key_press_handler_id = self.canvas.mpl_connect(
             'key_press_event', self._key_press)
-        for name in self._tools:
-            self.get_tool(name).set_figure(canvas.figure)
+
+        for tool in self._tools.values():
+            tool.set_figure(canvas.figure)
+
+        for tool in retrigg:
+            self.tool_trigger_event(tool.name, 'navigation')
 
     def nav_connect(self, s, func):
         """Connect event with string *s* to *func*.
@@ -3562,9 +3580,9 @@ class NavigationBase(object):
         if sender is None:
             sender = self
 
-        self._trigger_tool(name, sender, canvasevent, data)
+        self._trigger_tool(tool.name, sender, canvasevent, data)
 
-        s = 'tool_trigger_%s' % name
+        s = 'tool_trigger_%s' % tool.name
         event = ToolTriggerEvent(s, sender, tool, canvasevent, data)
         self._callbacks.process(s, event)
 

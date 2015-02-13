@@ -564,11 +564,29 @@ class MultiFigureManagerGTK3(MultiFigureManagerBase):
         if matplotlib.is_interactive():
             self.window.show()
 
-    def _on_switch_page(self, notebook, pointer, num):
-        canvas = self.notebook.get_nth_page(num)
-        self.active_canvas = canvas
+    # canvas and num properties are needed for pyplot
+    @property
+    def canvas(self):
+        return self.get_active_canvas()
+
+    @canvas.setter
+    def canvas(self, canvas):
+        self.set_active_canvas(canvas)
+
+    @property
+    def num(self):
+        return self._canvas[self.canvas]['num']
+
+    def _on_switch_page(self, notebook, canvas, num):
+        if canvas is not self.canvas:
+            self.canvas = canvas
+
+    def set_active_canvas(self, canvas):
+        MultiFigureManagerBase.set_active_canvas(self, canvas)
+        id_ = self.notebook.page_num(canvas)
+        self.notebook.set_current_page(id_)
         self.navigation.set_canvas(canvas)
-#         self.switch_child(canvas.manager)
+        self.show()  # If not here, impossible to grab key_press_event
 
     def add_canvas(self, canvas, num):
         MultiFigureManagerBase.add_canvas(self, canvas, num)
@@ -611,9 +629,8 @@ class MultiFigureManagerGTK3(MultiFigureManagerBase):
         box.show_all()
         canvas.show()
         self.notebook.append_page(canvas, box)
-
         self._tabs_changed()
-# self.show_child(child)
+        self.canvas = canvas
 
     def _destroy_canvas(self, canvas):
         self.remove_canvas(canvas)
@@ -686,17 +703,17 @@ class MultiFigureManagerGTK3(MultiFigureManagerBase):
 
         if self.toolbar:
             self.toolbar.destroy()
+            self.toolbar = None
 
         self.vbox.destroy()
         self.window.destroy()
 
-#         if Gcf.get_num_fig_managers()==0 and \
-#                not matplotlib.is_interactive() and \
-#                Gtk.main_level() >= 1:
+#         if Gcf.get_num_fig_managers() == 0 and \
+#                 not matplotlib.is_interactive() and \
+#                 Gtk.main_level() >= 1:
 #             Gtk.main_quit()
 
     def show(self):
-        # show the figure window
         self.window.show()
 
     def full_screen_toggle(self):
@@ -708,8 +725,6 @@ class MultiFigureManagerGTK3(MultiFigureManagerBase):
     _full_screen_flag = False
 
     def _get_toolbar(self):
-        # must be inited after the window, drawingArea and figure
-        # attrs are set
         if rcParams['toolbar'] == 'navigation':
             toolbar = ToolbarGTK3(self.navigation)
         else:
@@ -717,9 +732,8 @@ class MultiFigureManagerGTK3(MultiFigureManagerBase):
         return toolbar
 
     def _get_navigation(self):
-        # must be initialised after toolbar has been setted
         if rcParams['toolbar'] != 'toolbar2':
-            navigation = NavigationGTK3(self.active_canvas)
+            navigation = NavigationGTK3(self.canvas)
         else:
             navigation = None
         return navigation
