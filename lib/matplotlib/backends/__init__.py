@@ -14,18 +14,32 @@ __all__ = ['backend','show','draw_if_interactive',
            'new_figure_manager', 'backend_version']
 
 backend = matplotlib.get_backend() # validates, to match all_backends
+if backend.startswith('module://'):
+    backend_name = backend[9:]
+else:
+    backend_name = 'matplotlib.backends.backend_' + backend.lower()
+
+def get_backends():
+    _temp = __import__(backend_name, globals(), locals(),
+                       ['Window', 'Toolbar2', 'FigureCanvas', 'MainLoop',
+                        'new_figure_manager'], 0)
+    FigureCanvas = _temp.FigureCanvas
+    try:
+        Window = _temp.Window
+        Toolbar2 = _temp.Toolbar2
+        MainLoop = _temp.MainLoop
+        old_new_figure_manager = None
+    except AttributeError:
+        Window = None
+        Toolbar2 = None
+        MainLoop = getattr(_temp, 'show', do_nothing_show)
+        old_new_figure_manager = _temp.new_figure_manager
+
+    return FigureCanvas, Window, Toolbar2, MainLoop, old_new_figure_manager
 
 def pylab_setup():
     'return new_figure_manager, draw_if_interactive and show for pylab'
     # Import the requested backend into a generic module object
-
-    if backend.startswith('module://'):
-        backend_name = backend[9:]
-    else:
-        backend_name = 'backend_'+backend
-        backend_name = backend_name.lower() # until we banish mixed case
-        backend_name = 'matplotlib.backends.%s'%backend_name.lower()
-
     # the last argument is specifies whether to use absolute or relative
     # imports. 0 means only perform absolute imports.
     backend_mod = __import__(backend_name,
@@ -37,18 +51,10 @@ def pylab_setup():
     # image backends like pdf, agg or svg do not need to do anything
     # for "show" or "draw_if_interactive", so if they are not defined
     # by the backend, just do nothing
-    def do_nothing_show(*args, **kwargs):
-        frame = inspect.currentframe()
-        fname = frame.f_back.f_code.co_filename
-        if fname in ('<stdin>', '<ipython console>'):
-            warnings.warn("""
-Your currently selected backend, '%s' does not support show().
-Please select a GUI backend in your matplotlibrc file ('%s')
-or with matplotlib.use()""" %
-                          (backend, matplotlib.matplotlib_fname()))
+    
     def do_nothing(*args, **kwargs): pass
     backend_version = getattr(backend_mod,'backend_version', 'unknown')
-    show = getattr(backend_mod, 'show', do_nothing_show)
+    show = None if hasattr(backend_mod, 'show') else do_nothing_show
     draw_if_interactive = getattr(backend_mod, 'draw_if_interactive', do_nothing)
 
     # Additional imports which only happen for certain backends.  This section
@@ -60,3 +66,13 @@ or with matplotlib.use()""" %
     matplotlib.verbose.report('backend %s version %s' % (backend,backend_version))
 
     return backend_mod, new_figure_manager, draw_if_interactive, show
+
+def do_nothing_show(*args, **kwargs):
+    frame = inspect.currentframe()
+    fname = frame.f_back.f_code.co_filename
+    if fname in ('<stdin>', '<ipython console>'):
+        warnings.warn("""
+Your currently selected backend, '%s' does not support show().
+Please select a GUI backend in your matplotlibrc file ('%s')
+or with matplotlib.use()""" %
+                          (backend, matplotlib.matplotlib_fname()))
