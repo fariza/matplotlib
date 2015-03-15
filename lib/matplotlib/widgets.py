@@ -1049,6 +1049,7 @@ class MultiCursor(Widget):
         self.axes = axes
         self.horizOn = horizOn
         self.vertOn = vertOn
+        self.active = True
 
         xmin, xmax = axes[-1].get_xlim()
         ymin, ymax = axes[-1].get_ylim()
@@ -1090,6 +1091,8 @@ class MultiCursor(Widget):
 
     def clear(self, event):
         """clear the cursor"""
+        if self.ignore(event):
+            return        
         if self.useblit:
             self.background = (
                 self.canvas.copy_from_bbox(self.canvas.figure.bbox))
@@ -1097,6 +1100,8 @@ class MultiCursor(Widget):
             line.set_visible(False)
 
     def onmove(self, event):
+        if self.ignore(event):
+            return        
         if event.inaxes is None:
             return
         if not self.canvas.widgetlock.available(self):
@@ -1128,7 +1133,14 @@ class MultiCursor(Widget):
         else:
 
             self.canvas.draw_idle()
+            
+    def ignore(self, event):
+        """Return True if event should be ignored.
 
+        This method (or a version of it) should be called at the beginning
+        of any event callback.
+        """
+        return not self.active
 
 class _SelectorWidget(AxesWidget):
 
