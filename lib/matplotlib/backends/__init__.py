@@ -19,21 +19,9 @@ if backend.startswith('module://'):
 else:
     backend_name = 'matplotlib.backends.backend_' + backend.lower()
 
-def get_backends():
-    _temp = __import__(backend_name, globals(), locals(),
-                       ['Window', 'Toolbar2', 'FigureCanvas', 'MainLoop'], 0)
-    try:
-        Window = _temp.Window
-        Toolbar2 = _temp.Toolbar2
-        FigureCanvas = _temp.FigureCanvas
-        MainLoop = _temp.MainLoop
-    except AttributeError:
-        Window = None
-        Toolbar2 = None
-        FigureCanvas = None
-        MainLoop = getattr(_temp, 'show', do_nothing_show)
-
-    return FigureCanvas, Window, Toolbar2, MainLoop
+def get_backend():
+    return __import__(backend_name, globals(), locals(),
+                       [backend_name], 0)
 
 def pylab_setup():
     'return new_figure_manager, draw_if_interactive and show for pylab'
