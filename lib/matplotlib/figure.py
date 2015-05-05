@@ -1374,11 +1374,17 @@ class Figure(Artist):
 
         if restore_to_pylab:
             # lazy import to avoid circularity
+            # TODO clean on removal of Gcf from backends
             import matplotlib.pyplot as plt
             import matplotlib._pylab_helpers as pylab_helpers
+            import matplotlib.backend_managers as managers
             allnums = plt.get_fignums()
             num = max(allnums) + 1 if allnums else 1
-            mgr = plt._backend_mod.new_figure_manager_given_figure(num, self)
+            if hasattr(plt._backend_mod, 'Window'):  # Can we use MEP 27 code?
+                mgr = managers.FigureManager(self, num)
+            else:
+                mgr = plt._backend_mod.new_figure_manager_given_figure(num,
+                                                                       self)
 
             # XXX The following is a copy and paste from pyplot. Consider
             # factoring to pylab_helpers
@@ -1393,7 +1399,7 @@ class Figure(Artist):
             mgr._cidgcf = mgr.canvas.mpl_connect('button_press_event',
                                                  make_active)
 
-            pylab_helpers.Gcf.set_active(mgr)
+            pylab_helpers.Gcf.add_figure_manager(mgr)
             self.number = num
 
             plt.draw_if_interactive()

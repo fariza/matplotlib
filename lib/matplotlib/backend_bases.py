@@ -20,6 +20,12 @@ graphics contexts must implement to serve as a matplotlib backend
     pressed, x and y locations in pixel and
     :class:`~matplotlib.axes.Axes` coordinates.
 
+:class:`WindowBase`
+    The base class to display a window.
+
+:class:`MainLoopBase`
+    The base class to start the GUI's main loop.
+
 :class:`ShowBase`
     The base class for the Show class of each interactive backend;
     the 'show' callable is then set to Show.__call__, inherited from
@@ -43,6 +49,7 @@ import sys
 import warnings
 import time
 import io
+import weakref
 
 import numpy as np
 import matplotlib.cbook as cbook
@@ -136,6 +143,33 @@ def get_registered_canvas_class(format):
         backend_class = import_module(backend_class).FigureCanvas
         _default_backends[format] = backend_class
     return backend_class
+
+
+class MainLoopBase(object):
+    """This gets used as a key maintaining the event loop.
+    Backends should only need to override begin and end.
+    It should not matter if this gets used as a singleton or not due to
+    clever magic.
+    """
+    _instance_count = {}
+    def __init__(self):
+        MainLoopBase._instance_count.setdefault(self.__class__, 0)
+        MainLoopBase._instance_count[self.__class__] += 1
+
+    def begin(self):
+        pass
+
+    def end(self):
+        pass
+
+    def __call__(self):
+        self.begin()
+
+    def __del__(self):
+        MainLoopBase._instance_count[self.__class__] -= 1
+        if (MainLoopBase._instance_count[self.__class__] <= 0 and
+            not is_interactive()):
+            self.end()
 
 
 class ShowBase(object):
@@ -1676,7 +1710,7 @@ class FigureCanvasBase(object):
         register_backend('tiff', 'matplotlib.backends.backend_agg',
                          'Tagged Image File Format')
 
-    def __init__(self, figure):
+    def __init__(self, figure, manager=None):
         figure.set_canvas(self)
         self.figure = figure
         # a dictionary from event name to a dictionary that maps cid->func
@@ -1690,6 +1724,7 @@ class FigureCanvasBase(object):
         self.mouse_grabber = None  # the axes currently grabbing mouse
         self.toolbar = None  # NavigationToolbar2 will set me
         self._is_saving = False
+        self.manager = manager
 
     def is_saving(self):
         """
@@ -2446,6 +2481,19 @@ class FigureCanvasBase(object):
         """
         self._looping = False
 
+    def destroy(self):
+        pass
+
+    @property
+    def manager(self):
+        if self._manager is not None:
+            return self._manager()
+
+    @manager.setter
+    def manager(self, manager):
+        if manager is not None:
+            self._manager = weakref.ref(manager)
+
 
 def key_press_handler(event, canvas, toolbar=None):
     """
@@ -2485,7 +2533,10 @@ def key_press_handler(event, canvas, toolbar=None):
 
     # quit the figure (defaut key 'ctrl+w')
     if event.key in quit_keys:
-        Gcf.destroy_fig(canvas.figure)
+        if isinstance(canvas.manager, FigureManagerBase):  # Using old figman.
+            Gcf.destroy_fig(canvas.figure)
+        else:
+            canvas.manager._destroy('window_destroy_event')
 
     if toolbar is not None:
         # home or reset mnemonic  (default key 'h', 'home' and 'r')
@@ -2561,6 +2612,123 @@ class NonGuiException(Exception):
     pass
 
 
+class WindowEvent(object):
+    def __init__(self, name, window):
+        self.name = name
+        self.window = window
+
+
+class WindowBase(cbook.EventEmitter):
+    """The base class to show a window on screen.
+
+    Parameters
+    ----------
+    title : str
+        The title of the window.
+    """
+
+    def __init__(self, title):
+        cbook.EventEmitter.__init__(self)
+
+    def show(self):
+        """
+        For GUI backends, show the figure window and redraw.
+        For non-GUI backends, raise an exception to be caught
+        by :meth:`~matplotlib.figure.Figure.show`, for an
+        optional warning.
+        """
+        raise NonGuiException()
+
+    def destroy(self):
+        """Destroys the window"""
+        pass
+
+    def set_fullscreen(self, fullscreen):
+        """Whether to show the window fullscreen or not, GUI only.
+
+        Parameters
+        ----------
+        fullscreen : bool
+            True for yes, False for no.
+        """
+        pass
+
+    def set_default_size(self, width, height):
+        """Sets the default size of the window, defaults to a simple resize.
+
+        Parameters
+        ----------
+        width : int
+            The default width (in pixels) of the window.
+        height : int
+            The default height (in pixels) of the window.
+        """
+        self.resize(width, height)
+
+    def resize(self, width, height):
+        """"For gui backends, resizes the window.
+
+        Parameters
+        ----------
+        width : int
+            The new width (in pixels) for the window.
+        height : int
+            The new height (in pixels) for the window.
+        """
+        pass
+
+    def get_window_title(self):
+        """
+        Get the title text of the window containing the figure.
+        Return None for non-GUI backends (e.g., a PS backend).
+
+        Returns
+        -------
+        str : The window's title.
+        """
+        return 'image'
+
+    def set_window_title(self, title):
+        """
+        Set the title text of the window containing the figure.  Note that
+        this has no effect for non-GUI backends (e.g., a PS backend).
+
+        Parameters
+        ----------
+        title : str
+            The title of the window.
+        """
+        pass
+
+    def add_element(self, element, expand, place):
+        """ Adds a gui widget to the window.
+        This has no effect for non-GUI backends and properties only apply
+        to those backends that support them, or have a suitable workaround.
+
+        Parameters
+        ----------
+        element : A gui element.
+            The element to add to the window
+        expand : bool
+            Whether the element should auto expand to fill as much space within
+            the window as possible.
+        place : string
+            The location to place the element, either compass points north,
+            east, south, west, or center.
+        """
+        pass
+
+    def destroy_event(self, *args):
+        """Fires this event when the window wants to destroy itself.
+
+        Note this method should hook up to the backend's internal window's
+        close event.
+        """
+        s = 'window_destroy_event'
+        event = WindowEvent(s, self)
+        self._callbacks.process(s, event)
+
+
 class FigureManagerBase(object):
     """
     Helper class for pyplot mode, wraps everything up into a neat bundle
@@ -2578,12 +2746,8 @@ class FigureManagerBase(object):
         canvas.manager = self  # store a pointer to parent
         self.num = num
 
-        if rcParams['toolbar'] != 'toolmanager':
-            self.key_press_handler_id = self.canvas.mpl_connect(
-                                                'key_press_event',
-                                                self.key_press)
-        else:
-            self.key_press_handler_id = None
+        self.key_press_handler_id = self.canvas.mpl_connect('key_press_event',
+                                                            self.key_press)
         """
         The returned id from connecting the default key handler via
         :meth:`FigureCanvasBase.mpl_connnect`.
