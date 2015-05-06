@@ -73,22 +73,28 @@ class FigureManager(cbook.EventEmitter):
     """
     def __init__(self, figure, num):
         cbook.EventEmitter.__init__(self)
-        self.num = num
 
         self._backend = get_backend()
         self._mainloop = self._backend.MainLoop()
         self.window = self._backend.Window('Figure %d' % num)
         self.window.mpl_connect('window_destroy_event', self._destroy)
 
-        self.canvas = self._backend.FigureCanvas(figure, manager=self)
+        self.canvas_holder = self._get_canvas_holder()
+        self._canvas = None
+        self._num = None
+        self.add_figure(figure, num)
 
         self.key_press_handler_id = self.canvas.mpl_connect('key_press_event',
             self.key_press) if rcParams['toolbar'] != 'toolmanager' else None
 
-        w = int(self.canvas.figure.bbox.width)
-        h = int(self.canvas.figure.bbox.height)
-
-        self.window.add_element(self.canvas, True, 'center')
+        if self.canvas_holder:
+            w = self.canvas_holder.width
+            h = self.canvas_holder.height
+            self.window.add_element(self.canvas_holder, True, 'center')
+        else:
+            w = int(self.canvas.figure.bbox.width)
+            h = int(self.canvas.figure.bbox.height)
+            self.window.add_element(self.canvas, True, 'center')
 
         self.toolmanager = self._get_toolmanager()
         self.toolbar = self._get_toolbar()
@@ -115,6 +121,26 @@ class FigureManager(cbook.EventEmitter):
                 self.toolbar.update()
         self.canvas.figure.add_axobserver(notify_axes_change)
 
+    def add_figure(self, figure, num):
+        canvas = self._backend.FigureCanvas(figure, manager=self)
+        if self.canvas_holder:
+            self.canvas_holder.add_canvas(canvas, num)
+        else:
+            self._canvas = canvas
+            self._num = num
+
+    @property
+    def canvas(self):
+        if self.canvas_holder:
+            return self.canvas_holder.active_canvas
+        return self._canvas
+
+    @property
+    def num(self):
+        if self.canvas_holder:
+            return self.canvas_holder.active_num
+        return self._num
+
     def key_press(self, event):
         """
         Implement the default mpl key bindings defined at
@@ -132,7 +158,11 @@ class FigureManager(cbook.EventEmitter):
         """Called to destroy this FigureManager, gets called by Gcf through
         event magic.
         """
-        self.canvas.destroy()
+        if self.canvas_holder:
+            self.canvas_holder.destroy()
+        else:
+            self.canvas.destroy()
+
         if self.toolbar:
             self.toolbar.destroy()
         self.window.destroy()
@@ -185,6 +215,11 @@ class FigureManager(cbook.EventEmitter):
         else:
             toolmanager = None
         return toolmanager
+
+    def _get_canvas_holder(self):
+        if rcParams['backend.multifigure']:
+            return self._backend.CanvasHolder(manager=self)
+        return None
 
     def show_popup(self, msg):
         """

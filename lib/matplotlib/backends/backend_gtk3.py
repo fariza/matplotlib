@@ -30,7 +30,7 @@ import matplotlib
 from matplotlib._pylab_helpers import Gcf
 from matplotlib.backend_bases import (RendererBase, GraphicsContextBase,
      FigureManagerBase, FigureCanvasBase, NavigationToolbar2, cursors,
-     TimerBase, WindowBase, MainLoopBase)
+     TimerBase, WindowBase, MainLoopBase, CanvasHolderBase)
 from matplotlib.backend_bases import (ShowBase, ToolContainerBase,
                                       StatusbarBase)
 from matplotlib.backend_managers import ToolManager
@@ -474,6 +474,86 @@ class WindowGTK3(WindowBase, Gtk.Window):
 
     def set_window_title(self, title):
         self.set_title(title)
+
+
+class CanvasHolderGTK3(CanvasHolderBase, Gtk.Notebook):
+    def __init__(self, manager):
+        Gtk.Notebook.__init__(self)
+        CanvasHolderBase.__init__(self, manager)
+        self.set_scrollable(True)
+        self.connect('switch-page', self._on_switch_page)
+        self.set_show_tabs(True)
+        self.show()
+        self._titles = {}
+
+    def _on_switch_page(self, holder, canvas, page):
+        if canvas is not self.active_canvas:
+            self.set_active_canvas(canvas)
+
+    def set_active_canvas(self, canvas):
+        CanvasHolderBase.set_active_canvas(self, canvas)
+        id_ = self.page_num(canvas)
+        self.set_current_page(id_)
+        self.show()  # If not here, impossible to grab key_press_event
+
+    def remove_canvas(self, canvas):
+        del self._titles[canvas]
+        id_ = self.page_num(canvas)
+        self.remove_page(id_)
+        CanvasHolderBase.remove_canvas(self, canvas)
+
+    def set_canvas_title(self, canvas, title):
+        self._titles[canvas].set_text(title)
+
+    def get_canvas_title(self, canvas):
+        return self._titles[canvas].get_text()
+
+    def add_canvas(self, canvas, num):
+        CanvasHolderBase.add_canvas(self, canvas, num)
+        title = 'Fig %d' % num
+        box = Gtk.Box()
+        box.set_orientation(Gtk.Orientation.HORIZONTAL)
+        box.set_spacing(5)
+
+        label = Gtk.Label(title)
+        box.pack_start(label, True, True, 0)
+        self._titles[canvas] = label
+
+        # close button
+        button = Gtk.Button()
+        button.set_tooltip_text('Close')
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.set_focus_on_click(False)
+        button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                            Gtk.IconSize.MENU))
+        box.pack_end(button, False, False, 0)
+
+        def _remove(btn, canvas):
+            self.remove_canvas(canvas)
+            canvas.destroy()
+        button.connect("clicked", _remove, canvas)
+
+        # Detach button
+        button = Gtk.Button()
+        button.set_tooltip_text('Detach')
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.set_focus_on_click(False)
+        button.add(Gtk.Image.new_from_stock(Gtk.STOCK_JUMP_TO,
+                                            Gtk.IconSize.MENU))
+        box.pack_end(button, False, False, 0)
+
+        def _detach(btn, canvas):
+            return self.remove_canvas(canvas)
+        button.connect("clicked", _detach, canvas)
+
+        box.show_all()
+        canvas.show()
+        self.append_page(canvas, box)
+
+    def destroy(self):
+        Gtk.Notebook.destroy(self)
+
+CanvasHolder = CanvasHolderGTK3
 
 
 class FigureManagerGTK3(FigureManagerBase):

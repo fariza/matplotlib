@@ -2295,6 +2295,24 @@ class FigureCanvasBase(object):
         if hasattr(self, "manager"):
             self.manager.set_window_title(title)
 
+    def get_title(self):
+        """
+        Get the title text of the holder containing the figure.
+        Return None if there is no holder (e.g., a PS backend).
+        """
+        if hasattr(self, "manager") and getattr(self.manager,
+                                                'canvas_holder', False):
+            return self.manager.canvas_holder.get_canvas_title(self)
+
+    def set_title(self, title):
+        """
+        Set the title text of the holder containing the figure.  Note that
+        this has no effect if there is no holder (e.g., a PS backend).
+        """
+        if hasattr(self, "manager") and getattr(self.manager,
+                                                'canvas_holder', False):
+            self.manager.canvas_holder.set_canvas_title(self, title)
+
     def get_default_filename(self):
         """
         Return a string, which includes extension, suitable for use as
@@ -3544,4 +3562,69 @@ class StatusbarBase(object):
             Message text
         """
 
+        pass
+
+
+class CanvasHolderBase(object):
+    def __init__(self, manager):
+        self.manager = manager
+        self._canvases = []
+        self._active_canvas = None
+        self.nums = {}
+
+    def add_canvas(self, canvas, num):
+        self._canvases.append(canvas)
+        self.nums[canvas] = num
+        self.set_active_canvas(canvas)
+
+    @property
+    def active_canvas(self):
+        return self._active_canvas
+
+    @property
+    def active_num(self):
+        return self.nums[self.active_canvas]
+
+    def _own_canvas(self, canvas):
+        if canvas not in self._canvases:
+            raise ValueError('Canvas not controlled by this Holder')
+
+    def set_active_canvas(self, canvas):
+        self._own_canvas(canvas)
+        self._active_canvas = canvas
+
+    def remove_canvas(self, canvas):
+        self._own_canvas(canvas)
+        self._canvases.remove(canvas)
+        if not self._canvases:
+            self.manager.destroy()
+            return
+        if self._active_canvas is canvas:
+            self.set_active_canvas(self._canvases[-1])
+
+    def set_canvas_title(self, canvas, title):
+        pass
+
+    def get_canvas_title(self, canvas):
+        pass
+
+    def destroy(self):
+        pass
+
+    @property
+    def width(self):
+        if len(self._canvases) == 1:
+            return int(self.active_canvas.figure.bbox.width)
+        return self.get_width()
+
+    def get_width(self):
+        pass
+
+    @property
+    def height(self):
+        if len(self._canvases) == 1:
+            return int(self.active_canvas.figure.bbox.height)
+        return self.get_height()
+
+    def get_height(self):
         pass

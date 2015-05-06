@@ -430,9 +430,18 @@ def figure(num=None,  # autoincrement if None, else integer from 1-N
             dpi = 72
 
         if hasattr(_backend_mod, 'Window'):  # Can we use the MEP 27 code?
+            figManager = kwargs.pop('manager', None)
             fig = FigureClass(figsize=figsize, dpi=dpi, facecolor=facecolor,
                               edgecolor=edgecolor, frameon=frameon, **kwargs)
-            figManager = backend_managers.FigureManager(fig, num)
+
+            if rcParams['backend.multifigure']:
+                if figManager is None:
+                    figManager = _pylab_helpers.Gcf.get_active()
+
+            if figManager:
+                figManager.add_figure(fig, num)
+            else:
+                figManager = backend_managers.FigureManager(fig, num)
         else:
             figManager = new_figure_manager(num, figsize=figsize,
                                             dpi=dpi,
