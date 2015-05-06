@@ -82,6 +82,7 @@ class FigureManager(cbook.EventEmitter):
         self.canvas_holder = self._get_canvas_holder()
         self._canvas = None
         self._num = None
+        self.toolmanager = None
         self.add_figure(figure, num)
 
         self.key_press_handler_id = self.canvas.mpl_connect('key_press_event',
@@ -270,11 +271,8 @@ class ToolManager(object):
     """
 
     def __init__(self, canvas):
-        self.canvas = canvas
-
-        self._key_press_handler_id = self.canvas.mpl_connect(
-            'key_press_event', self._key_press)
-
+        self.canvas = None
+        self._key_press_handler_id = None
         self._tools = {}
         self._keys = {}
         self._toggled = {}
@@ -283,6 +281,16 @@ class ToolManager(object):
         # to process keypress event
         self.keypresslock = widgets.LockDraw()
         self.messagelock = widgets.LockDraw()
+        self.set_canvas(canvas)
+
+    def set_canvas(self, canvas):
+        if self._key_press_handler_id:
+            self.canvas.mpl_disconnect(self._key_press_handler_id)
+        self.canvas = canvas
+        self._key_press_handler_id = self.canvas.mpl_connect(
+            'key_press_event', self._key_press)
+        for tool in self._tools.values():
+            tool.figure = canvas.figure
 
     def toolmanager_connect(self, s, func):
         """

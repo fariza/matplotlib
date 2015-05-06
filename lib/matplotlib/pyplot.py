@@ -441,6 +441,7 @@ def figure(num=None,  # autoincrement if None, else integer from 1-N
             if figManager:
                 figManager.add_figure(fig, num)
             else:
+                print('new one', num)
                 figManager = backend_managers.FigureManager(fig, num)
         else:
             figManager = new_figure_manager(num, figsize=figsize,

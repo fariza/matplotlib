@@ -483,7 +483,7 @@ class CanvasHolderGTK3(CanvasHolderBase, Gtk.Notebook):
         self.set_scrollable(True)
         self.connect('switch-page', self._on_switch_page)
         self.set_show_tabs(True)
-        self.show()
+#         self.show_all()
         self._titles = {}
 
     def _on_switch_page(self, holder, canvas, page):
@@ -494,7 +494,7 @@ class CanvasHolderGTK3(CanvasHolderBase, Gtk.Notebook):
         CanvasHolderBase.set_active_canvas(self, canvas)
         id_ = self.page_num(canvas)
         self.set_current_page(id_)
-        self.show()  # If not here, impossible to grab key_press_event
+        canvas.show()  # If not here, impossible to grab key_press_event
 
     def remove_canvas(self, canvas):
         del self._titles[canvas]
@@ -549,9 +549,13 @@ class CanvasHolderGTK3(CanvasHolderBase, Gtk.Notebook):
         box.show_all()
         canvas.show()
         self.append_page(canvas, box)
+        self.set_active_canvas(canvas)
 
     def destroy(self):
         Gtk.Notebook.destroy(self)
+
+    def show(self):
+        Gtk.Notebook.show_all(self)
 
 CanvasHolder = CanvasHolderGTK3
 

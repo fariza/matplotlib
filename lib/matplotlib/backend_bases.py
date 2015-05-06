@@ -3575,7 +3575,7 @@ class CanvasHolderBase(object):
     def add_canvas(self, canvas, num):
         self._canvases.append(canvas)
         self.nums[canvas] = num
-        self.set_active_canvas(canvas)
+#         self.set_active_canvas(canvas)
 
     @property
     def active_canvas(self):
@@ -3592,10 +3592,13 @@ class CanvasHolderBase(object):
     def set_active_canvas(self, canvas):
         self._own_canvas(canvas)
         self._active_canvas = canvas
+        if self.manager.toolmanager:
+            self.manager.toolmanager.set_canvas(canvas)
 
     def remove_canvas(self, canvas):
         self._own_canvas(canvas)
         self._canvases.remove(canvas)
+        del self.nums[canvas]
         if not self._canvases:
             self.manager.destroy()
             return

@@ -111,6 +111,9 @@ class ToolBase(object):
         figure: `Figure`
         """
 
+        self._set_figure(figure)
+
+    def _set_figure(self, figure):
         self._figure = figure
 
     @property
@@ -146,8 +149,8 @@ class ToolToggleBase(ToolBase):
     """Cursor to use when the tool is active"""
 
     def __init__(self, *args, **kwargs):
-        ToolBase.__init__(self, *args, **kwargs)
         self._toggled = False
+        ToolBase.__init__(self, *args, **kwargs)
 
     def trigger(self, sender, event, data=None):
         """Calls `enable` or `disable` based on `toggled` value"""
@@ -188,6 +191,14 @@ class ToolToggleBase(ToolBase):
 
         return self._toggled
 
+    def _set_figure(self, figure):
+        toggled = self.toggled
+        if toggled:
+            self.trigger(self, None)
+        self._figure = figure
+        if toggled:
+            self.trigger(self, None)
+
 
 class SetCursorBase(ToolBase):
     """
@@ -197,9 +208,8 @@ class SetCursorBase(ToolBase):
     set_cursor when a tool gets triggered
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
-        self._idDrag = self.figure.canvas.mpl_connect(
-            'motion_notify_event', self._set_cursor_cbk)
         self._cursor = None
         self._default_cursor = cursors.POINTER
         self._last_cursor = self._default_cursor
@@ -209,6 +219,13 @@ class SetCursorBase(ToolBase):
         # process current tools
         for tool in self.toolmanager.tools.values():
             self._add_tool(tool)
+
+    def _set_figure(self, figure):
+        if self._idDrag:
+            self.figure.canvas.mpl_disconnect(self._idDrag)
+        ToolBase._set_figure(self, figure)
+        self._idDrag = self.figure.canvas.mpl_connect(
+            'motion_notify_event', self._set_cursor_cbk)
 
     def _tool_trigger_cbk(self, event):
         if event.tool.toggled:
@@ -261,7 +278,13 @@ class ToolCursorPosition(ToolBase):
     This tool runs in the background reporting the position of the cursor
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
+
+    def _set_figure(self, figure):
+        if self._idDrag:
+            self.figure.canvas.mpl_disconnect(self._idDrag)
+        ToolBase._set_figure(self, figure)
         self._idDrag = self.figure.canvas.mpl_connect(
             'motion_notify_event', self.send_message)
 
