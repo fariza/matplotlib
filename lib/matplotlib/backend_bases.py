@@ -3578,6 +3578,10 @@ class CanvasHolderBase(object):
 #         self.set_active_canvas(canvas)
 
     @property
+    def canvases(self):
+        return self._canvases
+
+    @property
     def active_canvas(self):
         return self._active_canvas
 
