@@ -3,20 +3,21 @@ import matplotlib
 matplotlib.use('GTK3AGG')
 # matplotlib.rcParams['backend.multifigure'] = False
 matplotlib.rcParams['toolbar'] = 'toolmanager'
-from matplotlib.backend_tools import ToolBase
+from matplotlib.backend_tools import ToolToggleBase
 
 
 from matplotlib.figure import Figure
 from matplotlib.backend_managers import FigureManager
 
 
-class t1(ToolBase):
+class t1(ToolToggleBase):
+    radio_group = 'multifigure'
     description = "change canvas"
     def __init__(self, *args, **kwargs):
         self.mfigure = kwargs.pop('figure')
-        ToolBase.__init__(self, *args, **kwargs)
+        ToolToggleBase.__init__(self, *args, **kwargs)
 
-    def trigger(self, *args, **kwargs):
+    def enable(self, *args, **kwargs):
         self.toolmanager.manager.figure = self.mfigure
 
 
