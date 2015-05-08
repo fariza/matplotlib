@@ -415,6 +415,7 @@ class WindowGTK3(WindowBase, Gtk.Window):
             # better way is - JDH
             verbose.report('Could not load matplotlib icon: %s' % sys.exc_info()[1])
 
+        self._boxes = {}
         self._layout = {}
         self._setup_box('_outer', Gtk.Orientation.VERTICAL, False, None)
         self._setup_box('north', Gtk.Orientation.VERTICAL, False, '_outer')
@@ -437,21 +438,33 @@ class WindowGTK3(WindowBase, Gtk.Window):
         self._layout[name].show()
 
     def add_element(self, element, expand, place):
-        element.show()
+        box = Gtk.Box()
+        box.pack_start(element, expand=True, fill=True, padding=0)
 
         flow = _flow[not _flow.index(self._layout[place].get_orientation())]
         separator = Gtk.Separator(orientation=flow)
         separator.show()
         if place in ['north', 'west', 'center']:
-            self._layout[place].pack_start(element, expand, expand, 0)
+            self._layout[place].pack_start(box, expand, expand, 0)
             self._layout[place].pack_start(separator, False, False, 0)
         elif place in ['south', 'east']:
-            self._layout[place].pack_end(element, expand, expand, 0)
+            self._layout[place].pack_end(box, expand, expand, 0)
             self._layout[place].pack_end(separator, False, False, 0)
         else:
             raise KeyError('Unknown value for place, %s' % place)
-        size_request = element.size_request()
+        size_request = box.size_request()
+        element.show()
+        box.show()
+        self._boxes[element] = box
         return size_request.height + separator.size_request().height
+
+    def replace_element(self, original, new):
+        box = self._boxes.pop(original)
+        box.remove(original)
+        box.pack_start(new, expand=True, fill=True, padding=0)
+        new.show()
+        box.show()
+        self._boxes[new] = box
 
     def set_default_size(self, width, height):
         Gtk.Window.set_default_size(self, width, height)

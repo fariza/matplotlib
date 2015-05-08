@@ -2718,6 +2718,28 @@ class WindowBase(cbook.EventEmitter):
         """
         pass
 
+    def replace_element(self, oldelement, newelement):
+        """Replaces a gui widget for another
+
+        Parameters
+        ----------
+        oldelement: A gui element.
+            The element to be replaced
+        newelement: A gui element.
+            The replacement element
+        """
+        pass
+
+    def remove_element(self, element):
+        """Removes a widget
+
+        Parameters
+        ----------
+        element: A gui element
+            Element to be removed from the gui
+        """
+        pass
+
     def destroy_event(self, *args):
         """Fires this event when the window wants to destroy itself.
 

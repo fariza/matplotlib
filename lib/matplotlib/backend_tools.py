@@ -74,11 +74,35 @@ class ToolBase(object):
         self._name = name
         self._figure = None
         self.toolmanager = toolmanager
-        self.figure = toolmanager.canvas.figure
+        self.figure = toolmanager.figure
 
     @property
     def figure(self):
         return self._figure
+
+    @figure.setter
+    def figure(self, newfig):
+        """
+        Set the figure
+
+        Set the figure to be affected by this tool
+
+        Parameters
+        ----------
+        figure: `Figure`
+        """
+        if not newfig:
+            return
+        oldfig = self._figure
+        self.pre_set_figure(oldfig, newfig)
+        self._figure = newfig
+        self.post_set_figure(oldfig, newfig)
+
+    def pre_set_figure(self, oldfig, newfig):
+        pass
+
+    def post_set_figure(self, oldfig, newfig):
+        pass
 
     def trigger(self, sender, event, data=None):
         """
@@ -98,20 +122,6 @@ class ToolBase(object):
         """
 
         pass
-
-    @figure.setter
-    def figure(self, figure):
-        """
-        Set the figure
-
-        Set the figure to be affected by this tool
-
-        Parameters
-        ----------
-        figure: `Figure`
-        """
-
-        self._figure = figure
 
     @property
     def name(self):
@@ -146,8 +156,16 @@ class ToolToggleBase(ToolBase):
     """Cursor to use when the tool is active"""
 
     def __init__(self, *args, **kwargs):
-        ToolBase.__init__(self, *args, **kwargs)
         self._toggled = False
+        ToolBase.__init__(self, *args, **kwargs)
+
+    def pre_set_figure(self, oldfig, newfig):
+        if self._toggled:
+            self.disable(None)
+
+    def post_set_figure(self, oldfig, newfig):
+        if self._toggled:
+            self.enable(None)
 
     def trigger(self, sender, event, data=None):
         """Calls `enable` or `disable` based on `toggled` value"""
@@ -197,9 +215,8 @@ class SetCursorBase(ToolBase):
     set_cursor when a tool gets triggered
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
-        self._idDrag = self.figure.canvas.mpl_connect(
-            'motion_notify_event', self._set_cursor_cbk)
         self._cursor = None
         self._default_cursor = cursors.POINTER
         self._last_cursor = self._default_cursor
@@ -209,6 +226,14 @@ class SetCursorBase(ToolBase):
         # process current tools
         for tool in self.toolmanager.tools.values():
             self._add_tool(tool)
+
+    def pre_set_figure(self, oldfig, newfig):
+        if self._idDrag:
+            oldfig.canvas.mpl_disconnect('motion_notify_event')
+
+    def post_set_figure(self, oldfig, newfig):
+        self._idDrag = newfig.canvas.mpl_connect('motion_notify_event',
+                                                 self._set_cursor_cbk)
 
     def _tool_trigger_cbk(self, event):
         if event.tool.toggled:
@@ -261,9 +286,16 @@ class ToolCursorPosition(ToolBase):
     This tool runs in the background reporting the position of the cursor
     """
     def __init__(self, *args, **kwargs):
+        self._idDrag = None
         ToolBase.__init__(self, *args, **kwargs)
-        self._idDrag = self.figure.canvas.mpl_connect(
-            'motion_notify_event', self.send_message)
+
+    def pre_set_figure(self, oldfig, newfig):
+        if self._idDrag:
+            oldfig.canvas.mpl_disconnect('motion_notify_event')
+
+    def post_set_figure(self, oldfig, newfig):
+        self._idDrag = newfig.canvas.mpl_connect('motion_notify_event',
+                                                 self.send_message)
 
     def send_message(self, event):
         """Call `matplotlib.backend_managers.ToolManager.message_event`"""
@@ -488,7 +520,6 @@ class ToolViewsPositions(ToolBase):
 
     def push_current(self):
         """push the current view limits and position onto the stack"""
-
         lims = []
         pos = []
         for a in self.figure.get_axes():
@@ -606,6 +637,7 @@ class ZoomPanBase(ToolToggleBase):
 
     def enable(self, event):
         """Connect press/release events and lock the canvas"""
+        self.toolmanager.get_tool(_views_positions).add_figure()
         self.figure.canvas.widgetlock(self)
         self._idPress = self.figure.canvas.mpl_connect(
             'button_press_event', self._press)
@@ -621,10 +653,6 @@ class ZoomPanBase(ToolToggleBase):
         self.figure.canvas.mpl_disconnect(self._idPress)
         self.figure.canvas.mpl_disconnect(self._idRelease)
         self.figure.canvas.mpl_disconnect(self._idScroll)
-
-    def trigger(self, sender, event, data=None):
-        self.toolmanager.get_tool(_views_positions).add_figure()
-        ToolToggleBase.trigger(self, sender, event, data)
 
     def scroll_zoom(self, event):
         # https://gist.github.com/tacaswell/3144287
@@ -930,7 +958,7 @@ class ToolPan(ZoomPanBase):
             # safer to use the recorded button at the _press than current
             # button: # multiple button can get pressed during motion...
             a.drag_pan(self._button_pressed, event.key, event.x, event.y)
-        self.toolmanager.canvas.draw_idle()
+        self.figure.canvas.draw_idle()
 
 
 default_tools = {'home': ToolHome, 'back': ToolBack, 'forward': ToolForward,
