@@ -14,6 +14,10 @@ These tools are used by `matplotlib.backend_managers.ToolManager`
 
 from matplotlib import rcParams
 import matplotlib.cbook as cbook
+from matplotlib.backends import get_backend
+# from matplotlib.figure import Figure
+from matplotlib.widgets import SubplotTool
+
 from weakref import WeakKeyDictionary
 import numpy as np
 import six
@@ -578,11 +582,42 @@ class ToolForward(ViewsPositionsBase):
     _on_trigger = 'forward'
 
 
-class ConfigureSubplotsBase(ToolBase):
-    """Base tool for the configuration of subplots"""
+class ToolConfigureSubplots(ToolToggleBase):
+    """Tool for the configuration of subplots"""
 
     description = 'Configure subplots'
     image = 'subplots.png'
+
+    def __init__(self, *args, **kwargs):
+        ToolToggleBase.__init__(self, *args, **kwargs)
+        self.window = None
+        self.destroy_id = None
+        self.backend = get_backend()
+
+    def enable(self, *args):
+        window = self.backend.Window(self.description)
+        self.destroy_id = window.mpl_connect('window_destroy_event',
+                                             self._window_destroy)
+        toolfig = self.figure.__class__(figsize=(6, 3))
+        canvas = self.backend.FigureCanvas(toolfig)
+        toolfig.subplots_adjust(top=0.9)
+        SubplotTool(self.figure, toolfig)
+
+        w = int(toolfig.bbox.width)
+        h = int(toolfig.bbox.height)
+        window.add_element(canvas, True, 'center')
+        window.set_default_size(w, h)
+        window.show()
+        self.window = window
+
+    def disable(self, *args):
+        self.window.mpl_disconnect(self.destroy_id)
+        self.destroy_id = None
+        self.window.destroy()
+        self.window = None
+
+    def _window_destroy(self, *args):
+        self.toolmanager.trigger_tool(self.name, sender=self)
 
 
 class SaveFigureBase(ToolBase):
@@ -935,7 +970,7 @@ class ToolPan(ZoomPanBase):
 
 default_tools = {'home': ToolHome, 'back': ToolBack, 'forward': ToolForward,
                  'zoom': ToolZoom, 'pan': ToolPan,
-                 'subplots': 'ToolConfigureSubplots',
+                 'subplots': ToolConfigureSubplots,
                  'save': 'ToolSaveFigure',
                  'grid': ToolGrid,
                  'fullscreen': ToolFullScreen,
