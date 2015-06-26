@@ -74,11 +74,10 @@ class ToolBase(object):
         self._name = name
         self._figure = None
         self.toolmanager = toolmanager
-        self.figure = toolmanager.canvas.figure
 
     @property
     def figure(self):
-        return self._figure
+        return self.toolmanager.figmanager.figure
 
     def trigger(self, sender, event, data=None):
         """
@@ -98,20 +97,6 @@ class ToolBase(object):
         """
 
         pass
-
-    @figure.setter
-    def figure(self, figure):
-        """
-        Set the figure
-
-        Set the figure to be affected by this tool
-
-        Parameters
-        ----------
-        figure: `Figure`
-        """
-
-        self._figure = figure
 
     @property
     def name(self):
@@ -318,7 +303,7 @@ class ToolQuit(ToolBase):
 
     def trigger(self, sender, event, data=None):
         try:
-            manager = self.figure.canvas.manager
+            manager = self.toolmanager.figmanager
         except:
             pass
         else:
@@ -385,10 +370,10 @@ class ToolFullScreen(ToolToggleBase):
     default_keymap = rcParams['keymap.fullscreen']
 
     def enable(self, event):
-        self.figure.canvas.manager.full_screen_toggle()
+        self.toolmanager.figmanager.full_screen_toggle()
 
     def disable(self, event):
-        self.figure.canvas.manager.full_screen_toggle()
+        self.toolmanager.figmanager.full_screen_toggle()
 
 
 class AxisScaleBase(ToolToggleBase):

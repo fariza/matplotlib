@@ -89,7 +89,7 @@ class FigureManager(cbook.EventEmitter):
 
         self.window.add_element(self.figure.canvas, True, 'center')
 
-        self.toolmanager = ToolManager(self.figure.canvas)
+        self.toolmanager = ToolManager(self)
         self.toolbar = self._get_toolbar()
 
         tools.add_tools_to_manager(self.toolmanager)
@@ -243,10 +243,10 @@ class ToolManager(object):
         `LockDraw` object to know if the message is available to write
     """
 
-    def __init__(self, canvas):
-        self.canvas = canvas
+    def __init__(self, figmanager):
+        self.figmanager = figmanager
 
-        self._key_press_handler_id = self.canvas.mpl_connect(
+        self._key_press_handler_id = self.figmanager.canvas.mpl_connect(
             'key_press_event', self._key_press)
 
         self._tools = {}
@@ -486,7 +486,7 @@ class ToolManager(object):
         # Find the class that corresponds to the tool
         if isinstance(callback_class, six.string_types):
             try:
-                backend = self.canvas.manager.backend
+                backend = self.figmanager.backend
             except:
                 backend = get_backend()
 
